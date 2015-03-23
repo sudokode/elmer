@@ -1,0 +1,17 @@
+SERVICES+=('sprunge')
+
+sprunge() {
+  local lang=$(lc $1); shift
+  local data="sprunge=$@"
+
+  local response=$(paste "http://sprunge.us/" "$data")
+
+  local url=$(awk '/http:\/\/sprunge\.us/' <<< "$response")
+
+  if [[ $lang != "none" ]]; then
+    sed 's/$/?'$lang'/' <<< "$url"
+  else
+    printf "%s\n" "$url"
+  fi
+}
+

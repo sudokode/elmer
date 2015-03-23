@@ -1,0 +1,229 @@
+#!/bin/bash
+
+# defaults
+if [[ -z $PASTEDEFAULT ]]; then
+  service="sprunge"
+else
+  service=$PASTEDEFAULT
+fi
+
+if [[ -z $PASTELANG ]]; then
+  lang=""
+else
+  lang=$PASTELANG
+fi
+
+if [[ -z $PASTEEXPIRE ]]; then
+  expire=""
+else
+  expire=$PASTEEXPIRE
+fi
+
+if [[ -z "$PASTENAME" ]]; then
+  name=""
+else
+  name="$PASTENAME"
+fi
+
+paste1=0
+if [[ -z $PASTE1 ]]; then
+  PASTE1="sprunge"
+fi
+
+paste2=0
+if [[ -z $PASTE2 ]]; then
+  PASTE2="codepad"
+fi
+
+paste3=0
+if [[ -z $PASTE3 ]]; then
+  PASTE1="pomf"
+fi
+
+if [[ -z $PASTEBUFFER ]]; then
+  buffer="primary"
+else
+  buffer=$PASTEBUFFER
+fi
+
+print_help() {
+cat <<HELP
+Usage: elmer [options] [FILE [FILE [FILE ...]]]
+
+Help options:
+  -h            print this menu
+  -S            print services
+  -L <service>  print languages for service
+  -E <service>  print expirations for service
+  -O <service>  print options for service
+
+Paste options (where supported):
+  -s <service>      paste service ($service)
+  -l <language>     paste language (${lang:-"none"})
+  -e <expiration>   paste expiration (${expire:-"none"})
+  -p                private paste
+  -r                run code
+  -t <title>        paste title
+  -n <name>         paster name (${name:-"none"})
+  -d <description>  paste description
+
+Quick service options:
+  -1  $PASTE1
+  -2  $PASTE2
+  -3  $PASTE3
+
+Input options:
+  -c  concatenate files
+  -x  use input from xclip
+
+Other options:
+  -X          output the URL to xclip
+  -b <buffer> xclip buffer to use ($buffer)
+
+The following environment variables can be used to alter the defaults:
+  -s = PASTEDEFAULT
+  -l = PASTELANG
+  -e = PASTEEXPIRE
+  -n = PASTENAME
+  -1 = PASTE1
+  -2 = PASTE2
+  -3 = PASTE3
+  -b = PASTEBUFFER
+
+Report problems: <issues link> 
+HELP
+}
+
+OPTERR=1
+while getopts "hSLEOs:l:e:prt:n:d:123cxX" opt; do
+  case $opt in
+    h)
+      print_help
+      exit
+      ;;
+    S)
+      print_services
+      exit
+      ;;
+    L)
+      print_langs $OPTARG
+      exit
+      ;;
+    E)
+      print_expirations $OPTARG
+      exit
+      ;;
+    O)
+      print_options $OPTARG
+      ;;
+    s)
+      service=$OPTARG
+      ;;
+    l)
+      lang=$OPTARG
+      ;;
+    e)
+      expire=$OPTARG
+      ;;
+    p)
+      private=1
+      ;;
+    r)
+      run=1
+      ;;
+    t)
+      title="$OPTARG"
+      ;;
+    n)
+      name="$OPTARG"
+      ;;
+    d)
+      desc="$OPTARG"
+    1)
+      paste1=1
+      ;;
+    2)
+      paste2=1
+      ;;
+    3)
+      paste3=1
+      ;;
+    c)
+      concat=1
+      ;;
+    x)
+      xin=1
+      ;;
+    X)
+      xout=1
+      ;;
+    \?)
+      printf "Invalid option: -%s\n" "$OPTARG" >&2
+      ;;
+    :)
+      printf "Option -%s requires an argument\n" "$OPTARG" >&2
+      ;;
+  esac
+done
+shift "$((OPTIND-1))"
+
+CONFIG_DIR="$HOME/.config/elmer"
+TMP_DIR="$CONFIG_DIR/tmp"
+TMP_NAME="date +%Y-%m-%d_%H-%M-%S"
+
+if [[ ! -d "$CONFIG_DIR" ]]; then
+  mkdir -p "$CONFIG_DIR"
+fi
+
+if [[ ! -d "$TMP_DIR" ]]; then
+  mkdir -p "$TMP_DIR"
+fi
+
+SERVICES=()
+for s in *.service; do
+  source $s
+done
+
+lc() {
+  tr '[:upper:]' '[:lower:]' <<< "$@"
+}
+
+paste() {
+  local host=$1; shift
+  local data="$@"
+
+  local tmpfile="$TMP_DIR/paste-$($TMP_NAME)"
+  while [[ -e "$tmpfile" ]]; do
+    sleep 1
+    tmpfile="$TMP_DIR/paste-$($TMP_NAME)"
+  done
+
+  if ! touch $tmpfile; then
+    printf "Error: could not create temp file: %s\n" $tmpfile
+    return 1
+  fi
+
+  printf "%s" "$data" > "$tmpfile"
+
+  if hash curl &>/dev/null; then
+    printf "%s\n" "$(curl -A 'Mozilla/5.0' -#H 'Expect:' $host -d \@"$tmpfile")"
+  elif hash wget &>/dev/null; then
+    printf "%s\n" "$(wget -U 'Mozilla/5.0' -qO - $host --post-file="$tmpfile")"
+  else
+    printf "Error: curl or wget not found\n"
+    return 1
+  fi
+
+  rm "$tmpfile"
+}
+
+print_url() {
+  local url=$1
+
+  printf "$url\n"
+}
+
+if hash $service &>/dev/null; then
+  $service $lang "" "" "hello world"
+fi
+

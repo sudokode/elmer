@@ -1,0 +1,31 @@
+SERVICES+=('codepad')
+
+codepad() {
+  local lang=$1; shift
+  local private=$2; shift
+  local run=$3; shift
+  local data="submit=Submit&code=$@"
+
+  if [[ "$lang" ]]; then
+    data+="&lang=$lang"
+  else
+    data+="&lang=Plain Text"
+  fi
+
+  if [[ "$private" ]]; then
+    data+="&private=True"
+  else
+    data+="&private=False"
+  fi
+
+  if [[ "$run" ]]; then
+    data+="&run=True"
+  else
+    data+="&run=False"
+  fi
+
+  local response=$(paste "http://codepad.org/" "$data")
+  local url=$(awk -F '"' '{print $2}' <<< "$response" | tr -d '[[:space:]]')
+
+  printf "%s\n" "$url"
+}
