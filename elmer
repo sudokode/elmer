@@ -15,12 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-cat <<ELMER
-If you're looking for the old elmer, you can find it at <https://github.com/sudokode/elmer-old>.
-This is the new elmer, rewritten in bash with a modular design so you can add your own services.
-It's not ready yet, so sorry for the inconvenience. You'll have to modify the old PKGBUILD for now.
-ELMER
-
 # defaults
 if [[ -z $PASTEDEFAULT ]]; then
   service="sprunge"
